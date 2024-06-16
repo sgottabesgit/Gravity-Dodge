@@ -1,50 +1,112 @@
 <!DOCTYPE html>
-<!--
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+<html lang="en">
 
-    http://www.apache.org/licenses/LICENSE-2.0
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Catch the Ball Game</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f0f0f0;
+        }
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-     KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
--->
-<html>
-    <head>
-        <meta charset="utf-8">
-        <!--
-        Customize this policy to fit your own app's needs. For more guidance, please refer to the docs:
-            https://cordova.apache.org/docs/en/latest/
-        Some notes:
-            * https://ssl.gstatic.com is required only on Android and is needed for TalkBack to function properly
-            * Disables use of inline scripts in order to mitigate risk of XSS vulnerabilities. To change this:
-                * Enable inline JS: add 'unsafe-inline' to default-src
-        -->
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;">
-        <meta name="format-detection" content="telephone=no">
-        <meta name="msapplication-tap-highlight" content="no">
-        <meta name="viewport" content="initial-scale=1, width=device-width, viewport-fit=cover">
-        <meta name="color-scheme" content="light dark">
-        <link rel="stylesheet" href="css/index.css">
-        <title>Hello World</title>
-    </head>
-    <body>
-        <div class="app">
-            <h1>Apache Cordova</h1>
-            <div id="deviceready" class="blink">
-                <p class="event listening">Connecting to Device</p>
-                <p class="event received">Device is Ready</p>
-            </div>
-        </div>
-        <script src="cordova.js"></script>
-        <script src="js/index.js"></script>
-    </body>
+        canvas {
+            border: 2px solid #777;
+            background: #bbb;
+        }
+    </style>
+    <script>
+        'use strict';
+        const REFRESH_RATE = 1000 / 25; // 25 fps
+        const GRAVITY = 0.5; // Acceleration due to gravity for the ball
+        const PADDLE_WIDTH = 100;
+        const PADDLE_HEIGHT = 20;
+        const BALL_RADIUS = 15;
+
+        let ballX, ballY, ballVY;
+        let paddleX;
+        let canvasWidth, canvasHeight;
+        let context = null;
+        let score = 0;
+        let gameOver = false;
+
+        function init() {
+            initCanvas();
+            resetBall();
+            addEventListener('devicemotion', getPaddlePosition, true);
+            setInterval(updateGame, REFRESH_RATE);
+        }
+
+        function initCanvas() {
+            let canvas = document.getElementById('canvas1');
+            context = canvas.getContext('2d');
+            canvasWidth = canvas.width = window.innerWidth * 0.9;
+            canvasHeight = canvas.height = window.innerHeight * 0.7;
+            paddleX = (canvasWidth - PADDLE_WIDTH) / 2;
+        }
+
+        function resetBall() {
+            ballX = Math.random() * (canvasWidth - 2 * BALL_RADIUS) + BALL_RADIUS;
+            ballY = BALL_RADIUS;
+            ballVY = 2;
+        }
+
+        function getPaddlePosition(event) {
+            let tilt = event.accelerationIncludingGravity.x;
+            paddleX -= tilt * 5; // Adjust sensitivity as needed
+            if (paddleX < 0) paddleX = 0;
+            if (paddleX + PADDLE_WIDTH > canvasWidth) paddleX = canvasWidth - PADDLE_WIDTH;
+        }
+
+        function updateGame() {
+            if (gameOver) return;
+
+            ballY += ballVY;
+            ballVY += GRAVITY;
+
+            if (ballY + BALL_RADIUS > canvasHeight) {
+                if (ballX > paddleX && ballX < paddleX + PADDLE_WIDTH) {
+                    score++;
+                    resetBall();
+                } else {
+                    gameOver = true;
+                    alert("Game Over! Your score: " + score);
+                    location.reload(); // Reload the page to restart the game
+                }
+            }
+
+            drawGame();
+        }
+
+        function drawGame() {
+            context.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            // Draw ball
+            context.beginPath();
+            context.arc(ballX, ballY, BALL_RADIUS, 0, Math.PI * 2, false);
+            context.fillStyle = "#f00";
+            context.fill();
+            context.closePath();
+
+            // Draw paddle
+            context.fillStyle = "#00f";
+            context.fillRect(paddleX, canvasHeight - PADDLE_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT);
+
+            // Draw score
+            context.font = "20px Arial";
+            context.fillStyle = "#000";
+            context.fillText("Score: " + score, 10, 20);
+        }
+
+    </script>
+</head>
+
+<body onload="init()">
+    <canvas id="canvas1"></canvas>
+</body>
+
 </html>
