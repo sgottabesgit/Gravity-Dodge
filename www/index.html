@@ -2,111 +2,145 @@
 <html lang="en">
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Catch the Ball Game</title>
+    <meta charset="UTF-8">
+    <title>Ball Maze Game</title>
     <style>
         body {
-            margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background: #f0f0f0;
+            background-color: #f0f0f0;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #game-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            background-color: #fff;
+            border: 2px solid #000;
         }
 
         canvas {
-            border: 2px solid #777;
-            background: #bbb;
+            width: 100%;
+            height: 100%;
         }
     </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+    </div>
     <script>
         'use strict';
-        const REFRESH_RATE = 1000 / 25; // 25 fps
-        const GRAVITY = 0.5; // Acceleration due to gravity for the ball
-        const PADDLE_WIDTH = 100;
-        const PADDLE_HEIGHT = 20;
-        const BALL_RADIUS = 15;
+        const REFRESH_RATE = 1000 / 25;
+        const BALL_RADIUS = 10;
+        const MAZE = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
+            [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 1, 1, 1, 1, 0, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+            [1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 1, 1, 1, 1, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
+        const TARGET = { x: 8, y: 9 };
 
-        let ballX, ballY, ballVY;
-        let paddleX;
-        let canvasWidth, canvasHeight;
-        let context = null;
-        let score = 0;
-        let gameOver = false;
+        let x = 0, y = 0;
+        let ballX = 1;
+        let ballY = 1;
+        let canvas, context;
+        let cellWidth, cellHeight;
 
         function init() {
-            initCanvas();
-            resetBall();
-            addEventListener('devicemotion', getPaddlePosition, true);
-            setInterval(updateGame, REFRESH_RATE);
-        }
-
-        function initCanvas() {
-            let canvas = document.getElementById('canvas1');
+            canvas = document.getElementById('game-canvas');
             context = canvas.getContext('2d');
-            canvasWidth = canvas.width = window.innerWidth * 0.9;
-            canvasHeight = canvas.height = window.innerHeight * 0.7;
-            paddleX = (canvasWidth - PADDLE_WIDTH) / 2;
+            canvas.width = 400;
+            canvas.height = 400;
+            cellWidth = canvas.width / MAZE[0].length;
+            cellHeight = canvas.height / MAZE.length;
+
+            addEventListener('devicemotion', getValues, true);
+            setInterval(update, REFRESH_RATE);
         }
 
-        function resetBall() {
-            ballX = Math.random() * (canvasWidth - 2 * BALL_RADIUS) + BALL_RADIUS;
-            ballY = BALL_RADIUS;
-            ballVY = 2;
+        function getValues(event) {
+            x = event.accelerationIncludingGravity.x;
+            y = event.accelerationIncludingGravity.y;
         }
 
-        function getPaddlePosition(event) {
-            let tilt = event.accelerationIncludingGravity.x;
-            paddleX -= tilt * 5; // Adjust sensitivity as needed
-            if (paddleX < 0) paddleX = 0;
-            if (paddleX + PADDLE_WIDTH > canvasWidth) paddleX = canvasWidth - PADDLE_WIDTH;
+        function update() {
+            let newBallX = ballX - x * 0.1;
+            let newBallY = ballY + y * 0.1;
+
+            if (!isWall(newBallX, ballY)) {
+                ballX = newBallX;
+            }
+            if (!isWall(ballX, newBallY)) {
+                ballY = newBallY;
+            }
+
+            if (isAtTarget()) {
+                alert('You win!');
+                resetGame();
+            }
+
+            draw();
         }
 
-        function updateGame() {
-            if (gameOver) return;
+        function isWall(x, y) {
+            let cellX = Math.floor(x);
+            let cellY = Math.floor(y);
+            return MAZE[cellY][cellX] === 1;
+        }
 
-            ballY += ballVY;
-            ballVY += GRAVITY;
+        function isAtTarget() {
+            let cellX = Math.floor(ballX);
+            let cellY = Math.floor(ballY);
+            return cellX === TARGET.x && cellY === TARGET.y;
+        }
 
-            if (ballY + BALL_RADIUS > canvasHeight) {
-                if (ballX > paddleX && ballX < paddleX + PADDLE_WIDTH) {
-                    score++;
-                    resetBall();
-                } else {
-                    gameOver = true;
-                    alert("Game Over! Your score: " + score);
-                    location.reload(); // Reload the page to restart the game
+        function resetGame() {
+            ballX = 1;
+            ballY = 1;
+        }
+
+        function draw() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let row = 0; row < MAZE.length; row++) {
+                for (let col = 0; col < MAZE[row].length; col++) {
+                    if (MAZE[row][col] === 1) {
+                        context.fillStyle = '#000';
+                    } else {
+                        context.fillStyle = '#fff';
+                    }
+                    context.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
                 }
             }
 
-            drawGame();
-        }
-
-        function drawGame() {
-            context.clearRect(0, 0, canvasWidth, canvasHeight);
-
-            // Draw ball
+            context.fillStyle = '#f00';
             context.beginPath();
-            context.arc(ballX, ballY, BALL_RADIUS, 0, Math.PI * 2, false);
-            context.fillStyle = "#f00";
+            context.arc(ballX * cellWidth, ballY * cellHeight, BALL_RADIUS, 0, Math.PI * 2);
             context.fill();
             context.closePath();
 
-            // Draw paddle
-            context.fillStyle = "#00f";
-            context.fillRect(paddleX, canvasHeight - PADDLE_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT);
-
-            // Draw score
-            context.font = "20px Arial";
-            context.fillStyle = "#000";
-            context.fillText("Score: " + score, 10, 20);
+            context.fillStyle = '#0f0';
+            context.beginPath();
+            context.arc(TARGET.x * cellWidth + cellWidth / 2, TARGET.y * cellHeight + cellHeight / 2, BALL_RADIUS, 0, Math.PI * 2);
+            context.fill();
+            context.closePath();
         }
 
+        window.onload = init;
     </script>
-</head>
-
-<body onload="init()">
-    <canvas id="canvas1"></canvas>
 </body>
 
 </html>
