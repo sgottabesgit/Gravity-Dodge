@@ -3,144 +3,139 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Ball Maze Game</title>
+    <title>Ball Dodge Game</title>
     <style>
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-            margin: 0;
+            text-align: center;
             font-family: Arial, sans-serif;
-        }
-
-        #game-container {
-            position: relative;
-            width: 400px;
-            height: 400px;
-            background-color: #fff;
-            border: 2px solid #000;
+            background: #eee;
         }
 
         canvas {
-            width: 100%;
-            height: 100%;
+            background: #333;
+            display: block;
+            margin: 0 auto;
+            border: 2px solid #555;
+        }
+
+        #score {
+            color: #fff;
+            font-size: 24px;
+            margin-top: 10px;
         }
     </style>
-</head>
-
-<body>
-    <div id="game-container">
-        <canvas id="game-canvas"></canvas>
-    </div>
     <script>
         'use strict';
-        const REFRESH_RATE = 1000 / 25;
-        const BALL_RADIUS = 10;
-        const MAZE = [
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-            [1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
-            [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 1, 1, 1, 1, 0, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-            [1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 1, 1, 1, 1, 1, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-        ];
-        const TARGET = { x: 8, y: 9 };
+        const REFRESH_RATE = 1000 / 25; // 25 fps
+        const GRAVITY = 9.8;
+        const FACTOR_FRICTION = 0.6;
+        const FACTOR_SPEED = 0.4;
+        const BALL_RADIUS = 15;
+        const OBSTACLE_WIDTH = 30;
+        const OBSTACLE_HEIGHT = 30;
+        const OBSTACLE_SPEED = 2;
 
-        let x = 0, y = 0;
-        let ballX = 1;
-        let ballY = 1;
+        let x, y, z;
+        let ballX, ballY;
         let canvas, context;
-        let cellWidth, cellHeight;
+        let obstacles = [];
+        let score = 0;
+        let gameInterval;
+        let obstacleInterval;
 
         function init() {
-            canvas = document.getElementById('game-canvas');
+            canvas = document.getElementById('gameCanvas');
             context = canvas.getContext('2d');
-            canvas.width = 400;
-            canvas.height = 400;
-            cellWidth = canvas.width / MAZE[0].length;
-            cellHeight = canvas.height / MAZE.length;
-
-            addEventListener('devicemotion', getValues, true);
-            setInterval(update, REFRESH_RATE);
+            ballX = canvas.width / 2;
+            ballY = canvas.height - BALL_RADIUS - 10;
+            window.addEventListener('devicemotion', getValues, true);
+            gameInterval = setInterval(updateGame, REFRESH_RATE);
+            obstacleInterval = setInterval(addObstacle, 1000); // Add a new obstacle every second
         }
 
         function getValues(event) {
             x = event.accelerationIncludingGravity.x;
             y = event.accelerationIncludingGravity.y;
+            z = event.accelerationIncludingGravity.z;
         }
 
-        function update() {
-            let newBallX = ballX - x * 0.1;
-            let newBallY = ballY + y * 0.1;
-
-            if (!isWall(newBallX, ballY)) {
-                ballX = newBallX;
-            }
-            if (!isWall(ballX, newBallY)) {
-                ballY = newBallY;
+        function updateGame() {
+            if (typeof x === 'undefined' || typeof y === 'undefined' || typeof z === 'undefined') {
+                return;
             }
 
-            if (isAtTarget()) {
-                alert('You win!');
-                resetGame();
-            }
+            let f = 1 - FACTOR_FRICTION * Math.abs(z) / GRAVITY;
+            let ax = x * f;
+            let ay = y * f;
 
-            draw();
-        }
+            ballX -= ax * FACTOR_SPEED;
+            ballY += ay * FACTOR_SPEED;
 
-        function isWall(x, y) {
-            let cellX = Math.floor(x);
-            let cellY = Math.floor(y);
-            return MAZE[cellY][cellX] === 1;
-        }
+            if (ballX < BALL_RADIUS) ballX = BALL_RADIUS;
+            if (ballX > canvas.width - BALL_RADIUS) ballX = canvas.width - BALL_RADIUS;
+            if (ballY < BALL_RADIUS) ballY = BALL_RADIUS;
+            if (ballY > canvas.height - BALL_RADIUS) ballY = canvas.height - BALL_RADIUS;
 
-        function isAtTarget() {
-            let cellX = Math.floor(ballX);
-            let cellY = Math.floor(ballY);
-            return cellX === TARGET.x && cellY === TARGET.y;
-        }
-
-        function resetGame() {
-            ballX = 1;
-            ballY = 1;
-        }
-
-        function draw() {
             context.clearRect(0, 0, canvas.width, canvas.height);
+            drawBall(ballX, ballY, BALL_RADIUS);
+            drawObstacles();
+            checkCollisions();
+            updateScore();
+        }
 
-            for (let row = 0; row < MAZE.length; row++) {
-                for (let col = 0; col < MAZE[row].length; col++) {
-                    if (MAZE[row][col] === 1) {
-                        context.fillStyle = '#000';
-                    } else {
-                        context.fillStyle = '#fff';
-                    }
-                    context.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
+        function drawBall(bx, by, r) {
+            context.beginPath();
+            context.arc(bx, by, r, 0, Math.PI * 2, false);
+            context.fillStyle = '#0af';
+            context.fill();
+            context.closePath();
+        }
+
+        function addObstacle() {
+            let obstacleX = Math.random() * (canvas.width - OBSTACLE_WIDTH);
+            obstacles.push({ x: obstacleX, y: -OBSTACLE_HEIGHT });
+        }
+
+        function drawObstacles() {
+            context.fillStyle = '#f00';
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i];
+                obs.y += OBSTACLE_SPEED;
+                context.fillRect(obs.x, obs.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
+            }
+            obstacles = obstacles.filter(obs => obs.y < canvas.height);
+        }
+
+        function checkCollisions() {
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i];
+                if (ballX + BALL_RADIUS > obs.x && ballX - BALL_RADIUS < obs.x + OBSTACLE_WIDTH &&
+                    ballY + BALL_RADIUS > obs.y && ballY - BALL_RADIUS < obs.y + OBSTACLE_HEIGHT) {
+                    gameOver();
+                    break;
                 }
             }
-
-            context.fillStyle = '#f00';
-            context.beginPath();
-            context.arc(ballX * cellWidth, ballY * cellHeight, BALL_RADIUS, 0, Math.PI * 2);
-            context.fill();
-            context.closePath();
-
-            context.fillStyle = '#0f0';
-            context.beginPath();
-            context.arc(TARGET.x * cellWidth + cellWidth / 2, TARGET.y * cellHeight + cellHeight / 2, BALL_RADIUS, 0, Math.PI * 2);
-            context.fill();
-            context.closePath();
         }
 
-        window.onload = init;
+        function updateScore() {
+            score++;
+            document.getElementById('score').innerText = "Score: " + score;
+        }
+
+        function gameOver() {
+            clearInterval(gameInterval);
+            clearInterval(obstacleInterval);
+            alert('Game Over! Your score: ' + score);
+            document.location.reload();
+        }
+
     </script>
+</head>
+
+<body onload="init()">
+    <h1>Ball Dodge Game</h1>
+    <canvas id="gameCanvas" width="300" height="500"></canvas>
+    <div id="score">Score: 0</div>
 </body>
 
 </html>
