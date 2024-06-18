@@ -23,17 +23,34 @@
             font-size: 24px;
             margin-top: 10px;
         }
+
+        .controls {
+            margin-top: 10px;
+        }
+
+        .slider-container {
+            margin: 10px;
+        }
+
+        .slider-label {
+            display: inline-block;
+            width: 150px;
+        }
+
+        #startButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+        }
     </style>
     <script>
         'use strict';
         const REFRESH_RATE = 1000 / 25; // 25 fps
         const GRAVITY = 9.8;
         const FACTOR_FRICTION = 0.6;
-        const FACTOR_SPEED = 0.4;
         const BALL_RADIUS = 15;
         const OBSTACLE_WIDTH = 30;
         const OBSTACLE_HEIGHT = 30;
-        const OBSTACLE_SPEED = 2;
 
         let x, y, z;
         let ballX, ballY;
@@ -42,6 +59,8 @@
         let score = 0;
         let gameInterval;
         let obstacleInterval;
+        let ballSpeed = 0.4; // Initial ball speed
+        let obstacleSpeed = 2; // Initial obstacle speed
 
         function init() {
             canvas = document.getElementById('gameCanvas');
@@ -49,14 +68,22 @@
             ballX = canvas.width / 2;
             ballY = canvas.height - BALL_RADIUS - 10;
             window.addEventListener('devicemotion', getValues, true);
-            gameInterval = setInterval(updateGame, REFRESH_RATE);
-            obstacleInterval = setInterval(addObstacle, 1000); // Add a new obstacle every second
         }
 
         function getValues(event) {
             x = event.accelerationIncludingGravity.x;
             y = event.accelerationIncludingGravity.y;
             z = event.accelerationIncludingGravity.z;
+        }
+
+        function startGame() {
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('ballSpeedSlider').disabled = true;
+            document.getElementById('obstacleSpeedSlider').disabled = true;
+            score = 0;
+            obstacles = [];
+            gameInterval = setInterval(updateGame, REFRESH_RATE);
+            obstacleInterval = setInterval(addObstacle, 1000); // Add a new obstacle every second
         }
 
         function updateGame() {
@@ -68,8 +95,8 @@
             let ax = x * f;
             let ay = y * f;
 
-            ballX -= ax * FACTOR_SPEED;
-            ballY += ay * FACTOR_SPEED;
+            ballX -= ax * ballSpeed;
+            ballY += ay * ballSpeed;
 
             if (ballX < BALL_RADIUS) ballX = BALL_RADIUS;
             if (ballX > canvas.width - BALL_RADIUS) ballX = canvas.width - BALL_RADIUS;
@@ -100,7 +127,7 @@
             context.fillStyle = '#f00';
             for (let i = 0; i < obstacles.length; i++) {
                 let obs = obstacles[i];
-                obs.y += OBSTACLE_SPEED;
+                obs.y += obstacleSpeed;
                 context.fillRect(obs.x, obs.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
             }
             obstacles = obstacles.filter(obs => obs.y < canvas.height);
@@ -126,7 +153,17 @@
             clearInterval(gameInterval);
             clearInterval(obstacleInterval);
             alert('Game Over! Your score: ' + score);
-            document.location.reload();
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('ballSpeedSlider').disabled = false;
+            document.getElementById('obstacleSpeedSlider').disabled = false;
+        }
+
+        function updateBallSpeed(event) {
+            ballSpeed = event.target.value;
+        }
+
+        function updateObstacleSpeed(event) {
+            obstacleSpeed = event.target.value;
         }
 
     </script>
@@ -136,6 +173,17 @@
     <h1>Ball Dodge Game</h1>
     <canvas id="gameCanvas" width="300" height="500"></canvas>
     <div id="score">Score: 0</div>
+    <div class="controls">
+        <div class="slider-container">
+            <span class="slider-label">Ball Speed:</span>
+            <input type="range" id="ballSpeedSlider" min="0.1" max="2.0" step="0.1" value="0.4">
+        </div>
+        <div class="slider-container">
+            <span class="slider-label">Obstacle Speed:</span>
+            <input type="range" id="obstacleSpeedSlider" min="1" max="5" step="0.1" value="2">
+        </div>
+        <button id="startButton" onclick="startGame()">Start Game</button>
+    </div>
 </body>
 
 </html>
