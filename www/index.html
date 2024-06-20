@@ -182,14 +182,14 @@
         }
 
         function updateScore() {
-            score++;
-            document.getElementById('score').innerText = "Score: " + score;
+            score += (10 / ballSpeed) + obstacleSpeed; // Score calculation based on speeds
+            document.getElementById('score').innerText = "Score: " + Math.round(score);
         }
 
         function gameOver() {
             clearInterval(gameInterval);
             clearInterval(obstacleInterval);
-            alert('Game Over! Your score: ' + score);
+            alert('Game Over! Your score: ' + Math.round(score));
             document.getElementById('startButton').disabled = false;
             document.getElementById('ballSpeedSlider').disabled = false;
             document.getElementById('obstacleSpeedSlider').disabled = false;
