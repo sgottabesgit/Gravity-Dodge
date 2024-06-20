@@ -34,8 +34,7 @@
         }
 
         #score,
-        #highScore,
-        #pointsPerSecond {
+        #highScore {
             font-size: 24px;
             margin-top: 10px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
@@ -84,28 +83,28 @@
         'use strict';
         const REFRESH_RATE = 1000 / 25; // 25 fps
         const GRAVITY = 9.8;
-        const FACTOR_FRICTION = 0.6;
+        const FRICTION_FACTOR = 0.6;
         const BALL_RADIUS = 15;
         const OBSTACLE_WIDTH = 30;
         const OBSTACLE_HEIGHT = 30;
 
-        let x, y, z;
-        let ballX, ballY;
+        let accelX, accelY, accelZ;
+        let ballPositionX, ballPositionY;
         let canvas, context;
         let obstacles = [];
-        let score = 0;
+        let currentScore = 0;
         let highScore = 0;
-        let gameInterval;
-        let obstacleInterval;
+        let gameUpdateInterval;
+        let obstacleAddInterval;
         let ballSpeed = 1.5; // Initial ball speed
         let obstacleSpeed = 2; // Initial obstacle speed
 
         function init() {
             canvas = document.getElementById('gameCanvas');
             context = canvas.getContext('2d');
-            ballX = canvas.width / 2;
-            ballY = canvas.height - BALL_RADIUS - 10;
-            window.addEventListener('devicemotion', getValues, true);
+            ballPositionX = canvas.width / 2;
+            ballPositionY = canvas.height - BALL_RADIUS - 10;
+            window.addEventListener('devicemotion', updateAccelerationValues, true);
             document.getElementById('ballSpeedSlider').addEventListener('input', updateBallSpeed);
             document.getElementById('obstacleSpeedSlider').addEventListener('input', updateObstacleSpeed);
 
@@ -114,44 +113,44 @@
                 highScore = parseFloat(localStorage.getItem('highScore'));
                 document.getElementById('highScore').innerText = "High Score: " + Math.round(highScore);
             }
-            updatePointsPerSecond();
+            updatePointsPerSecondDisplay();
         }
 
-        function getValues(event) {
-            x = event.accelerationIncludingGravity.x;
-            y = event.accelerationIncludingGravity.y;
-            z = event.accelerationIncludingGravity.z;
+        function updateAccelerationValues(event) {
+            accelX = event.accelerationIncludingGravity.x;
+            accelY = event.accelerationIncludingGravity.y;
+            accelZ = event.accelerationIncludingGravity.z;
         }
 
         function startGame() {
             document.getElementById('startButton').disabled = true;
             document.getElementById('ballSpeedSlider').disabled = true;
             document.getElementById('obstacleSpeedSlider').disabled = true;
-            score = 0;
+            currentScore = 0;
             obstacles = [];
-            gameInterval = setInterval(updateGame, REFRESH_RATE);
-            obstacleInterval = setInterval(addObstacle, 1000); // Add a new obstacle every second
+            gameUpdateInterval = setInterval(updateGame, REFRESH_RATE);
+            obstacleAddInterval = setInterval(addObstacle, 1000); // Add a new obstacle every second
         }
 
         function updateGame() {
-            if (typeof x === 'undefined' || typeof y === 'undefined' || typeof z === 'undefined') {
+            if (typeof accelX === 'undefined' || typeof accelY === 'undefined' || typeof accelZ === 'undefined') {
                 return;
             }
 
-            let f = 1 - FACTOR_FRICTION * Math.abs(z) / GRAVITY;
-            let ax = x * f;
-            let ay = y * f;
+            let frictionFactor = 1 - FRICTION_FACTOR * Math.abs(accelZ) / GRAVITY;
+            let accelXAdjusted = accelX * frictionFactor;
+            let accelYAdjusted = accelY * frictionFactor;
 
-            ballX -= ax * ballSpeed;
-            ballY += ay * ballSpeed;
+            ballPositionX -= accelXAdjusted * ballSpeed;
+            ballPositionY += accelYAdjusted * ballSpeed;
 
-            if (ballX < BALL_RADIUS) ballX = BALL_RADIUS;
-            if (ballX > canvas.width - BALL_RADIUS) ballX = canvas.width - BALL_RADIUS;
-            if (ballY < BALL_RADIUS) ballY = BALL_RADIUS;
-            if (ballY > canvas.height - BALL_RADIUS) ballY = canvas.height - BALL_RADIUS;
+            if (ballPositionX < BALL_RADIUS) ballPositionX = BALL_RADIUS;
+            if (ballPositionX > canvas.width - BALL_RADIUS) ballPositionX = canvas.width - BALL_RADIUS;
+            if (ballPositionY < BALL_RADIUS) ballPositionY = BALL_RADIUS;
+            if (ballPositionY > canvas.height - BALL_RADIUS) ballPositionY = canvas.height - BALL_RADIUS;
 
             context.clearRect(0, 0, canvas.width, canvas.height);
-            drawBall(ballX, ballY, BALL_RADIUS);
+            drawBall(ballPositionX, ballPositionY, BALL_RADIUS);
             drawObstacles();
             checkCollisions();
             updateScore();
@@ -183,8 +182,8 @@
         function checkCollisions() {
             for (let i = 0; i < obstacles.length; i++) {
                 let obs = obstacles[i];
-                if (ballX + BALL_RADIUS > obs.x && ballX - BALL_RADIUS < obs.x + OBSTACLE_WIDTH &&
-                    ballY + BALL_RADIUS > obs.y && ballY - BALL_RADIUS < obs.y + OBSTACLE_HEIGHT) {
+                if (ballPositionX + BALL_RADIUS > obs.x && ballPositionX - BALL_RADIUS < obs.x + OBSTACLE_WIDTH &&
+                    ballPositionY + BALL_RADIUS > obs.y && ballPositionY - BALL_RADIUS < obs.y + OBSTACLE_HEIGHT) {
                     gameOver();
                     break;
                 }
@@ -192,21 +191,21 @@
         }
 
         function updateScore() {
-            score += (10 / ballSpeed) + obstacleSpeed; // Score calculation based on speeds
-            document.getElementById('score').innerText = "Score: " + Math.round(score);
+            currentScore += (10 / ballSpeed) + obstacleSpeed; // Score calculation based on speeds
+            document.getElementById('score').innerText = "Score: " + Math.round(currentScore);
 
             // Update high score if the current score is higher
-            if (score > highScore) {
-                highScore = score;
+            if (currentScore > highScore) {
+                highScore = currentScore;
                 localStorage.setItem('highScore', highScore);
                 document.getElementById('highScore').innerText = "High Score: " + Math.round(highScore);
             }
         }
 
         function gameOver() {
-            clearInterval(gameInterval);
-            clearInterval(obstacleInterval);
-            alert('Game Over! Your score: ' + Math.round(score));
+            clearInterval(gameUpdateInterval);
+            clearInterval(obstacleAddInterval);
+            alert('Game Over! Your score: ' + Math.round(currentScore));
             document.getElementById('startButton').disabled = false;
             document.getElementById('ballSpeedSlider').disabled = false;
             document.getElementById('obstacleSpeedSlider').disabled = false;
@@ -214,15 +213,15 @@
 
         function updateBallSpeed(event) {
             ballSpeed = parseFloat(event.target.value);
-            updatePointsPerSecond();
+            updatePointsPerSecondDisplay();
         }
 
         function updateObstacleSpeed(event) {
             obstacleSpeed = parseFloat(event.target.value);
-            updatePointsPerSecond();
+            updatePointsPerSecondDisplay();
         }
 
-        function updatePointsPerSecond() {
+        function updatePointsPerSecondDisplay() {
             let pointsPerSecond = (10 / ballSpeed) + obstacleSpeed;
             document.getElementById('pointsPerSecond').innerText = "Points per Second: " + pointsPerSecond.toFixed(2);
         }
@@ -235,7 +234,6 @@
     <canvas id="gameCanvas" width="300" height="500"></canvas>
     <div id="score">Score: 0</div>
     <div id="highScore">High Score: 0</div>
-    <div id="pointsPerSecond">Points per Second: 0.00</div>
     <div class="controls">
         <div class="slider-container">
             <span class="slider-label">Ball Speed:</span>
@@ -245,6 +243,7 @@
             <span class="slider-label">Obstacle Speed:</span>
             <input type="range" id="obstacleSpeedSlider" min="1" max="10" step="0.1" value="2">
         </div>
+        <div id="pointsPerSecond">Points per Second: 0.00</div>
         <button id="startButton" onclick="startGame()">Start Game</button>
     </div>
 </body>
